@@ -1,0 +1,405 @@
+package com.prach.mashup.webappextractor;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.os.Bundle;
+import android.os.Handler;
+import android.util.Log;
+import android.view.KeyEvent;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Toast;
+
+public class WAExtractor extends Activity {
+	private WebView browser = null;
+	private JSHandler jsh;
+	public int pagecount = 0;
+	
+	public String URL = null;
+	public String[] inputs = null;
+	public String[] scripts = null;
+	public int ocount = 0;
+	
+	final Handler mHandler = new Handler();
+	private Thread t;
+	
+	public Runnable mFinished1 = new Runnable() {
+        public void run() {
+        	//startProcess2();
+        	dofinish();
+        }
+    };
+    
+    public Runnable mReturned = new Runnable() {
+        public void run() {
+        	//startProcess2();
+        	doreturn();
+        }
+    };
+    
+    public void doreturn(){
+    	
+    }
+	
+    public void dofinish(){
+    	Intent data = getIntent();
+    	data.putExtra("OUTPUTS", jsh.outputs);
+    	this.setResult(Activity.RESULT_OK, data);
+    	if(t!=null){
+			t.stop();
+			t=null;
+		}
+    	Log.d("com.prach.mashup.WAExtractor", "finish()");
+    	finish();
+    	android.os.Process.killProcess(android.os.Process.myPid());
+    }
+    
+	/** Called when the activity is first created. */
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
+		//initScreen();
+	}
+	
+	public void startProcess1(){
+		Log.d("com.prach.mashup.WAExtractor", "startProcess1()");
+		URL = "http://www.alc.co.jp/";
+		
+		scripts = new String[2];
+		scripts[0] = 
+		"var tagArray1 = document.getElementsByTagName('form');"+
+		"var parentElement;"+
+		"for(var i=0;i<tagArray1.length;i++){"+
+		"    if(i>0&&i<7&&tagArray1[i].id=='fm1'&&tagArray1[i].name=='fm1'){"+
+		"        parentElement = tagArray1[i];"+
+		"        break;"+
+		"    }"+
+		"}"+
+		"var childElements = new Array();"+
+		"var tagArray2 = parentElement.getElementsByTagName('input');"+
+		"for(var i=0;i<tagArray2.length;i++)"+
+		"    if(i==0&&tagArray2[i].name=='q'&&(tagArray2[i].className.indexOf('j12')!=-1&&tagArray2[i].className.indexOf('s_txt')!=-1))"+
+		"        childElements[0] = tagArray2[i];"+
+		"childElements[0].style.backgroundColor = '#FF6699';"+
+		"childElements[0].style.borderColor = '#FF6699';"+
+		"childElements[0].focus();"+
+		"var tagArray2 = parentElement.getElementsByTagName('input');"+
+		"for(var i=0;i<tagArray2.length;i++)"+
+		"    if(i==1&&tagArray2[i].className=='j12')"+
+		"        childElements[1] = tagArray2[i];"+
+		"childElements[1].style.backgroundColor = '#FF6699';"+
+		"childElements[1].style.borderColor = '#FF6699';";
+		
+		scripts[1] = 
+		"var tagArray1 = document.getElementsByTagName('div');"+
+		"var parentElement;"+
+		"for(var i=0;i<tagArray1.length;i++){"+
+		"    if(i>31&&i<39&&tagArray1[i].id=='resultsList'&&tagArray1[i].className=='mr_10'){"+
+		"        parentElement = tagArray1[i];"+
+		"        break;"+
+		"    }"+
+		"}"+
+		"var tagArray2 = parentElement.getElementsByTagName('ul');"+
+		"var childElement;"+
+		"for(var i=0;i<tagArray2.length;i++)"+
+		"    if(i==1&&tagArray2[i].className=='ul_je')"+
+		"        childElement = tagArray2[i];"+
+		"var WordList = childElement.innerHTML;"+
+		"window.prach.saveOutput(WordList,0);" +
+		"window.prach.setfinishstate('true');";
+		
+		//String[] outputs = null;
+		ocount = 1;
+		
+		t = new Thread() {
+            public void run() {
+            	loadPages();
+            }
+        };
+        t.start();
+	}
+	
+	public void startProcess2(){
+		Log.d("com.prach.mashup.WAExtractor", "finished()");
+    	Log.d("com.prach.mashup.WAExtractor", "outputs.length="+jsh.outputs.length);
+		for (int i = 0; i < jsh.outputs.length; i++) {
+			Log.d("com.prach.mashup.WAExtractor", "outputs["+i+"]="+jsh.outputs[i]);
+		}
+	}
+	
+	public synchronized void loadPages(){
+		jsh = new JSHandler();
+		browser.addJavascriptInterface(jsh,"prach");
+		//
+		jsh.allocateOutput(ocount);
+		//
+		
+		pagecount=0;
+		browser.setWebViewClient(new WebViewClient() {
+			@Override
+			public void onPageStarted(WebView view,String url,Bitmap favicon){
+				Toast.makeText(getApplicationContext(), "Loading["+pagecount+"]:\n"+url, Toast.LENGTH_SHORT).show();
+			}
+			@Override  
+			public void onPageFinished(WebView view, String url){  
+				if(pagecount<(scripts.length-1)){
+					//Log.d("com.prach.mashup.WAExtractor","case=1");
+					Log.d("com.prach.mashup.WAExtractor","Page["+pagecount+"]:finished");
+					Toast.makeText(getApplicationContext(), "Page["+pagecount+"]:finished", Toast.LENGTH_SHORT).show();
+					browser.loadUrl("javascript:"+scripts[pagecount]);
+					pagecount++;
+				}else{
+					//Log.d("com.prach.mashup.WAExtractor","case=2");
+					Log.d("com.prach.mashup.WAExtractor","Page["+pagecount+"]:finished");
+					Toast.makeText(getApplicationContext(), "Page["+pagecount+"]:finished", Toast.LENGTH_SHORT).show();
+					browser.loadUrl("javascript:"+scripts[pagecount]);
+				}
+			}  
+		}); 
+		browser.loadUrl(URL);
+	}
+
+	final class JSHandler{
+		//<default>
+		public String[] parameters = null;
+		public String[] outputs = null;
+		public boolean saved = false;
+		public boolean finished = false;
+		
+		public void info(String str){
+			Log.i("JSHandler.info",str);
+		}
+		
+		public void error(String str){
+			Log.e("JSHandler.error",str);
+		}
+		
+		public void endapp(){
+			finish();
+		}
+		
+		public void allocateParam(int size){
+			Log.d("com.prach.mashup.WAExtractor", "JSHandler.allocateParam():size="+size); 
+			parameters = new String[size];
+			Log.d("com.prach.mashup.WAExtractor", "JSHandler.parameters.length="+parameters.length);
+		}
+		
+		public void allocateOutput(int size){
+			Log.d("com.prach.mashup.WAExtractor", "JSHandler.allocateOutput():size="+size); 
+			outputs = new String[size];
+			Log.d("com.prach.mashup.WAExtractor", "JSHandler.outputs.length="+outputs.length);
+		}
+		
+		public void setsavestate(String state){
+			if(state.equals("true"))
+				saved = true;
+			else if(state.equals("false"))
+				saved = false;
+		}
+		
+		public void setfinishstate(String state){
+			if(state.equals("true"))
+				finished = true;
+			else if(state.equals("false"))
+				finished = false;
+			mHandler.post(mFinished1);
+		}
+		
+		public boolean saveParam(String param, int index){
+			Log.d("com.prach.mashup.WAExtractor", "saveParam();"); 
+			if(parameters==null||index>=parameters.length){
+				Log.d("com.prach.mashup.WAExtractor", "JSHandler.saveParam()=false,index false or null");
+				return false;
+			}else{
+				parameters[index] = param;
+				Log.d("com.prach.mashup.WAExtractor", "JSHandler.saveParam()=true,param:"+param);
+				return true;
+			}
+		}
+		
+		public boolean saveOutput(String output, int index){
+			Log.d("com.prach.mashup.WAExtractor", "saveOutput();"); 
+			if(outputs==null||index>=outputs.length){
+				Log.d("com.prach.mashup.WAExtractor", "JSHandler.saveOutput()=false,index false or null");
+				return false;
+			}else{
+				outputs[index] = output;
+				Log.d("com.prach.mashup.WAExtractor", "JSHandler.saveOutput()=true,output:"+output);
+				return true;
+			}
+			
+		}
+		//</default>
+		
+		/*public void speech(String str){
+			Intent speechIntent = new Intent("com.prach.mashup.TTS");
+			speechIntent.putExtra("SPEECH_LANG", "en_UK");
+			speechIntent.putExtra("READ_TEXT", str);
+			String[] filterarray = {"CUT_TAGS","CUT_MULTIBYTES"};
+			speechIntent.putExtra("FILTERS", filterarray);
+			speechIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			getApplicationContext().startActivity(speechIntent);
+		}*/
+	}
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) { 
+		if (keyCode == KeyEvent.KEYCODE_BACK) { 
+			if (pagecount>0){ 
+				//pagecount=0;
+				/*init();
+				t = new Thread() {
+		            public void run() {
+		            	loadPages();
+		            }
+		        };
+		        t.start();*/
+				//mHandler.post(mReturned);
+				//t.stop();
+				//init();
+				browser.stopLoading();
+				/*t = new Thread() {
+		            public void run() {
+		            	loadPages();
+		            }
+		        };
+		        t.start();*/
+		    	
+		    	//loadPages();
+				return false; 
+			}else if(pagecount==0){
+				return super.onKeyDown(keyCode, event);
+			}
+		}else if(keyCode == KeyEvent.KEYCODE_HOME){
+			finish();
+		}
+		return super.onKeyDown(keyCode, event);
+	} 
+	
+	@Override
+	protected void onResume(){
+		super.onResume();
+		Intent intent = getIntent();
+		
+		inputs = intent.getStringArrayExtra("INPUTS");
+		URL = intent.getStringExtra("URL");
+		scripts = intent.getStringArrayExtra("SCRIPTS");
+		ocount = intent.getIntExtra("OCOUNT", 0);
+		
+		Log.i("com.prach.mashup.WAExtractor","intent==null:"+(intent==null));
+		Log.i("com.prach.mashup.WAExtractor","t==null:"+(t==null));
+		Log.i("com.prach.mashup.WAExtractor","inputs==null:"+(inputs==null));
+		Log.i("com.prach.mashup.WAExtractor","URL==null:"+(URL==null));
+		Log.i("com.prach.mashup.WAExtractor","scripts==null:"+(scripts==null));
+		Log.i("com.prach.mashup.WAExtractor","ocount==0:"+(ocount==0));
+		Log.i("com.prach.mashup.WAExtractor","logic:"+(intent!=null&&scripts!=null&&URL!=null&&ocount!=0));
+		
+		if(intent!=null&&scripts!=null&&URL!=null&&ocount!=0){
+			Log.i("com.prach.mashup.WAExtractor","onResume():intent call");
+			if(t!=null)
+				t.stop();
+			init();
+			//pagecount=0;
+			inputs = intent.getStringArrayExtra("INPUTS");
+			URL = intent.getStringExtra("URL");
+			scripts = intent.getStringArrayExtra("SCRIPTS");
+			ocount = intent.getIntExtra("OCOUNT", 1);
+			//if(t==null){
+			t = new Thread() {
+	            public void run() {
+	            	loadPages();
+	            }
+	        };
+	        t.start();
+			//}
+		}else{
+			Log.i("com.prach.mashup.WAExtractor","onResume():fresh");
+			init();
+			initScreen();
+			//startProcess1();
+		}
+		
+		/*String[] messages = null;
+		if(intent!=null)
+			messages = intent.getStringArrayExtra("MSG");
+		String[] temps = null;
+
+		ResultNameVector.removeAllElements();
+		ResultArrayNameVector.removeAllElements();
+
+		if(intent!=null&&messages!=null){
+			Intent newIntent = new Intent(messages[0]);
+			Log.i("SMA.onResume()","call intent:"+messages[0]);
+			for (int i = 1; i < messages.length; i++) {
+				if(messages[i].startsWith("RESULT:")){
+					temps = messages[i].split(":");
+					ResultNameVector.add(temps[1]);
+					Log.i("SMA.onResume()","intent result:"+temps[1]);
+				}else if(messages[i].startsWith("RESULTS:")){
+					temps = messages[i].split(":");
+					ResultArrayNameVector.add(temps[1]);
+					Log.i("SMA.onResume()","intent results:"+temps[1]);
+				}else if(messages[i].startsWith("EXTRA:")){
+					temps = messages[i].split(":");
+					newIntent.putExtra(temps[1],messages[i+1]);
+					Log.i("SMA.onResume()","intent extra:"+temps[1]+"/"+messages[i+1]);
+				}else if(messages[i].startsWith("EXTRAS:")){
+					temps = messages[i].split(":");
+					if(!messages[i+1].equals("null")){
+						String[] extraarray = messages[i+1].split("<<>>");
+						newIntent.putExtra(temps[1],extraarray);
+						StringBuffer extramsg = new StringBuffer();
+						extramsg.append("array\n");
+						for (int j = 0; j < extraarray.length; j++) {
+							extramsg.append("["+i+"]");
+							extramsg.append(extraarray[i]);
+							extramsg.append("\n");
+						}
+						Log.i("SMA.onResume()","intent extras:"+temps[1]+"/"+extramsg.toString());
+					}
+				}
+			}
+
+			startActivityForResult(newIntent, REQ_CODE);
+			
+
+		}else{
+			Log.i("WAExtractor.onResume()","intent==null");
+		}
+		*/
+		//Log.i("WAExtractor.onResume()","intent call finished");
+	}
+	
+	public void init(){
+		browser = (WebView) findViewById(R.id.webview);
+		WebSettings settings = browser.getSettings();
+		settings.setJavaScriptEnabled(true);
+		browser.clearCache(true);
+		browser.setWebChromeClient(new WebChromeClient());
+		pagecount=0;
+		if(t!=null){
+			t.stop();
+			t=null;
+		}
+		//browser.addJavascriptInterface(new JSHandler(),"prach");
+	}
+	
+	public void initScreen(){
+		Log.d("com.prach.mashup.WAExtractor", "initScreen();");
+		pagecount=0;
+		browser.setWebViewClient(new WebViewClient() {
+			@Override
+			public void onPageStarted(WebView view,String url,Bitmap favicon){
+				Log.d("com.prach.mashup.WAExtractor","Loading["+pagecount+"]:\n"+url);
+				//Toast.makeText(getApplicationContext(), "Loading["+pagecount+"]:\n"+url, Toast.LENGTH_SHORT).show();
+			}
+		});
+		StringBuffer htmlcode = new StringBuffer();
+		htmlcode.append("<html><body>WAExtractor:<br>This application cannot be run in stand-alone mode, Intent call required</body></html>");
+		browser.loadData(htmlcode.toString(), "text/html", "utf-8");
+	}
+}

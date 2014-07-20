@@ -1,0 +1,197 @@
+package com.prach.mashup.webappextractor;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.KeyEvent;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Toast;
+
+public class WAExtractor extends Activity {
+	public int pagecount = 0;
+	private WebView browser = null;
+	
+	/** Called when the activity is first created. */
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
+		browser = (WebView) findViewById(R.id.webview);
+		
+		WebSettings settings = browser.getSettings();
+		settings.setJavaScriptEnabled(true);
+		browser.clearCache(true);
+
+		browser.setWebChromeClient(new WebChromeClient());
+
+		browser.addJavascriptInterface(new JSHandler(),"prach");
+
+		browser.setWebViewClient(new WebViewClient() {
+			@Override
+			public void onPageStarted(WebView view,String url,Bitmap favicon){
+				Toast.makeText(getApplicationContext(), "Loading["+pagecount+"]:\n"+url, Toast.LENGTH_SHORT).show();
+			}
+			
+			@Override  
+			public void onPageFinished(WebView view, String url){  
+				if(pagecount==0){
+					Log.d("com.prach.mashup.WAExtractor","Page["+pagecount+"]:finished");
+					Toast.makeText(getApplicationContext(), "Page["+pagecount+"]:finished", Toast.LENGTH_SHORT).show();
+					browser.loadUrl("javascript:"+
+							/*"var tagArray1 = document.getElementsByTagName('form');"+
+							"var parentElement;"+
+							"for(var i=0;i<tagArray1.length;i++){"+
+							"	if(i==1&&tagArray1[i].id=='fm1'&&tagArray1[i].name=='fm1'){"+
+							"		parentElement = tagArray1[i];"+
+							"	}"+
+							"}"+
+							"var tagArray2 = parentElement.getElementsByTagName('input');"+
+							"var childElements = new Array();"+
+							"for(var i=0;i<tagArray2.length;i++){"+
+							"	if(i==0&&tagArray2[i].type=='text'&&tagArray2[i].name=='q'&&(tagArray2[i].className.indexOf('s_txt')!=-1||tagArray2[i].className.indexOf('j12')!=-1)){"+
+							"		childElements[0] = tagArray2[i];"+
+							"	}"+
+							"}"+
+							"childElements[0].style.backgroundColor = '#FF6699';"+
+							"childElements[0].style.borderColor = '#FF6699';"+
+							
+							"for(var i=0;i<tagArray2.length;i++){"+
+							"	if(i==1&&tagArray2[i].type=='button'&&(tagArray2[i].className.indexOf('j12')!=-1)){"+
+							"		childElements[1] = tagArray2[i];"+
+							"	}"+
+							"}"+
+							"childElements[1].style.backgroundColor = '#FF6699';"+
+							"childElements[1].style.borderColor = '#FF6699';"*/
+							
+							"var tagArray1 = document.getElementsByTagName('form');"+
+							"var parentElement;"+
+							"for(var i=0;i<tagArray1.length;i++)"+
+							"    if(i==1&&tagArray1[i].id=='fm1'&&tagArray1[i].name=='fm1')"+
+							"        parentElement = tagArray1[i];"+
+							"var childElements = new Array();"+
+							"var tagArray2 = parentElement.getElementsByTagName('input');"+
+							"for(var i=0;i<tagArray2.length;i++)"+
+							"    if(i==0&&tagArray2[i].name=='q'&&(tagArray2[i].className.indexOf('j12')!=-1||tagArray2[i].className.indexOf('s_txt')!=-1))"+
+							"        childElements[0] = tagArray2[i];"+
+							"childElements[0].style.backgroundColor = '#FF6699';"+
+							"childElements[0].style.borderColor = '#FF6699';"+
+							"childElements[0].focus();"+
+							"var tagArray2 = parentElement.getElementsByTagName('input');"+
+							"for(var i=0;i<tagArray2.length;i++)"+
+							"    if(i==1&&tagArray2[i].className=='j12')"+
+							"        childElements[1] = tagArray2[i];"+
+							"childElements[1].style.backgroundColor = '#FF6699';"+
+							"childElements[1].style.borderColor = '#FF6699';"
+							 
+							//old code
+							/*"javascript:(function() { " +  
+							"document.fm1.q.style.backgroundColor='#FF6699';" +
+							"document.fm1.q.value = 'Šm”F';"+ 
+							//"document.fm1.onsubmit();"+
+							"})()" //end with this
+							*/
+					);
+					pagecount++;
+				}else if(pagecount>0){
+					Log.d("com.prach.mashup.WAExtractor","Page["+pagecount+"]:finished");
+					Toast.makeText(getApplicationContext(), "Page["+pagecount+"]:finished", Toast.LENGTH_SHORT).show();
+					browser.loadUrl("javascript:"+
+							/*"var tagArray1 = document.getElementsByTagName('div');"+
+							"var parentElement;"+
+							"for(var i=0;i<tagArray1.length;i++){"+
+							"	if(tagArray1[i].id=='resultsList'&&tagArray1[i].className=='mr_10'){"+
+							"		parentElement = tagArray1[i];"+
+							"	}"+
+							"}"+
+							"var tagArray2 = parentElement.getElementsByTagName('ul');"+
+							"for(var i=0;i<tagArray2.length;i++){"+
+							"	if(i==1&&tagArray2[i].className=='ul_je'){"+
+							"		childElement = tagArray2[i];"+
+							"	}"+
+							"}"+
+							"window.prach.speech(childElement.innerHTML);"*/
+							"var tagArray1 = document.getElementsByTagName('div');"+
+							"var parentElement;"+
+							"for(var i=0;i<tagArray1.length;i++)"+
+							"    if(i==33&&tagArray1[i].id=='resultsList'&&tagArray1[i].className=='mr_10')"+
+							"        parentElement = tagArray1[i];"+
+							"var tagArray2 = parentElement.getElementsByTagName('ul');"+
+							"var childElement;"+
+							"for(var i=0;i<tagArray2.length;i++)"+
+							"    if(i==1&&tagArray2[i].className=='ul_je')"+
+							"        childElement = tagArray2[i];"+
+							"var WordList = childElement.innerHTML;"+
+							"window.prach.speech(WordList);"
+							
+							//old code
+							/*"javascript:" +  
+							"window.prach.speech(document.getElementsByClassName('ul_je')[0].innerHTML);"//+
+							*/
+							//"alert(document.getElementsByClassName('ul_je')[0].innerHTML);"//+
+							//"window.prach.toast(document.getElementsByClassName('ul_je')[0].innerHTML);"
+					);
+
+
+				}
+
+			}  
+		}); 
+		//webview.setWebViewClient(new HelloWebViewClient());
+		browser.loadUrl("http://www.alc.co.jp/");
+		//Toast.makeText(this, "Loading["+pagecount+"]:\n"+browser.getUrl(), Toast.LENGTH_SHORT).show();
+	}
+
+	final class JSHandler{
+		public void info(String str){
+			Log.i("JSHandler.info",str);
+		}
+
+		public void error(String str){
+			Log.e("JSHandler.error",str);
+		}
+
+		public void endapp(){
+			finish();
+		}
+
+		public void speech(String str){
+			Intent speechIntent = new Intent("com.prach.mashup.TTS");
+			speechIntent.putExtra("SPEECH_LANG", "en_UK");
+			speechIntent.putExtra("READ_TEXT", str);
+			String[] filterarray = {"CUT_TAGS","CUT_MULTIBYTES"};
+			speechIntent.putExtra("FILTERS", filterarray);
+			speechIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			getApplicationContext().startActivity(speechIntent);
+		}
+	}
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) { 
+		if (keyCode == KeyEvent.KEYCODE_BACK) { 
+			if (pagecount>0){ 
+				pagecount--;
+				browser.loadUrl("http://www.alc.co.jp/");
+				return false; 
+			}else if(pagecount==0){
+				return super.onKeyDown(keyCode, event);
+			}
+		}
+		
+		return super.onKeyDown(keyCode, event);
+	} 
+	
+	public void loadUrl(String url){
+		Toast.makeText(this, "Loading["+pagecount+"]:\n"+browser.getUrl(), Toast.LENGTH_SHORT).show();
+		browser.loadUrl(url);
+	}
+	
+	@Override
+	protected void onResume(){
+		super.onResume();
+	}
+}
